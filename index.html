@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Arpita Chats</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+    body { background:#0b0b1a; color:#fff; height:100vh; display:flex; justify-content:center; align-items:center; }
+    .glass { background:rgba(255,255,255,0.05); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.08); border-radius:32px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.8); }
+    .auth-container { width:90%; max-width:420px; padding:40px 30px; text-align:center; animation:fadeIn .6s ease; }
+    .auth-container h1 { font-size:2.5rem; font-weight:800; background:linear-gradient(135deg,#f472b6,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+    .auth-container p.sub { color:#9ca3af; margin-bottom:25px; }
+    .auth-container input { width:100%; padding:14px 18px; margin-bottom:14px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:16px; color:#fff; font-size:1rem; outline:none; transition:.2s; }
+    .auth-container input:focus { border-color:#a78bfa; box-shadow:0 0 0 3px rgba(167,139,250,0.3); }
+    .auth-container button { width:100%; padding:14px; border:none; border-radius:30px; font-size:1.1rem; font-weight:600; background:linear-gradient(135deg,#ec4899,#8b5cf6); color:#fff; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+    .auth-container button:hover { transform:scale(1.02); box-shadow:0 10px 20px -8px rgba(139,92,246,0.5); }
+    .auth-container .error { color:#f87171; font-size:.9rem; margin-top:10px; }
+    .auth-container .link { color:#a78bfa; cursor:pointer; text-decoration:underline; }
+    .auth-container .link:hover { color:#c4b5fd; }
+    .auth-container .toggle-text { margin-top:16px; color:#9ca3af; font-size:.95rem; }
+
+    /* Chat Layout */
+    #chat { display:none; width:100%; height:100vh; max-height:900px; max-width:1400px; margin:0 auto; background:rgba(0,0,0,0.4); backdrop-filter:blur(30px); border-radius:32px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); }
+    @media(min-width:768px){ #chat { height:90vh; margin:5vh auto; } }
+    .chat-layout { display:flex; height:100%; }
+    /* Sidebar */
+    .sidebar { width:280px; min-width:280px; background:rgba(0,0,0,0.3); border-right:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; overflow:hidden; }
+    .sidebar-header { padding:20px 16px; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .sidebar-header h2 { font-size:1.4rem; background:linear-gradient(135deg,#f472b6,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .sidebar-header .my-name { color:#9ca3af; font-size:.85rem; margin-top:4px; }
+    .sidebar-search { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .sidebar-search input { width:100%; padding:8px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:20px; color:#fff; font-size:.9rem; outline:none; }
+    .sidebar-search input:focus { border-color:#8b5cf6; }
+    .user-list { flex:1; overflow-y:auto; padding:8px 0; }
+    .user-item { display:flex; align-items:center; padding:12px 16px; cursor:pointer; transition:background .15s; gap:12px; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .user-item:hover { background:rgba(255,255,255,0.05); }
+    .user-item.active { background:rgba(139,92,246,0.15); border-left:3px solid #8b5cf6; }
+    .user-avatar { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:1.1rem; background:linear-gradient(135deg,#7c3aed,#db2777); color:#fff; flex-shrink:0; }
+    .user-info { flex:1; min-width:0; }
+    .user-info .name { font-weight:500; font-size:.95rem; color:#e5e7eb; }
+    .user-info .status-text { font-size:.75rem; color:#9ca3af; display:flex; align-items:center; gap:5px; }
+    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .status-dot.online { background:#34d399; box-shadow:0 0 6px #34d399; }
+    .status-dot.offline { background:#6b7280; }
+    .user-item .unread { background:#8b5cf6; color:#fff; font-size:.7rem; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    /* Chat area */
+    .chat-area { flex:1; display:flex; flex-direction:column; min-width:0; }
+    .chat-header { display:flex; justify-content:space-between; align-items:center; padding:14px 24px; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.05); }
+    .chat-header .chat-user-info { display:flex; align-items:center; gap:12px; }
+    .chat-header .chat-user-info .avatar-small { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:1rem; background:linear-gradient(135deg,#7c3aed,#db2777); color:#fff; }
+    .chat-header .chat-user-info .name { font-weight:600; font-size:1.1rem; }
+    .chat-header .chat-user-info .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    .chat-header .chat-actions button { background:rgba(255,255,255,0.05); border:none; color:#d1d5db; padding:6px 14px; border-radius:20px; cursor:pointer; font-size:.85rem; margin-left:6px; }
+    .chat-header .chat-actions button:hover { background:rgba(255,255,255,0.1); }
+    .messages-container { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:6px; scroll-behavior:smooth; }
+    .messages-container .message { max-width:75%; padding:10px 16px; border-radius:20px; word-wrap:break-word; position:relative; animation:slideUp .25s ease; }
+    .message.mine { align-self:flex-end; background:linear-gradient(135deg,#7c3aed,#db2777); border-bottom-right-radius:4px; }
+    .message.other { align-self:flex-start; background:rgba(255,255,255,0.08); border-bottom-left-radius:4px; }
+    .message .time { font-size:.65rem; opacity:.6; margin-top:4px; display:flex; justify-content:flex-end; gap:6px; align-items:center; }
+    .message .status { font-size:.7rem; }
+    .message .reply-indicator { font-size:.7rem; opacity:.7; border-left:2px solid #a78bfa; padding-left:8px; margin-bottom:4px; }
+    .message .reaction { position:absolute; bottom:-8px; right:8px; background:#1f1f2e; border-radius:12px; padding:0 6px; font-size:1.2rem; line-height:1.6; }
+    .message .delete-btn { position:absolute; top:-6px; right:-6px; background:rgba(239,68,68,0.8); border:none; border-radius:50%; width:20px; height:20px; color:#fff; font-size:.7rem; cursor:pointer; display:none; }
+    .message:hover .delete-btn { display:block; }
+    .typing-indicator { align-self:flex-start; color:#9ca3af; font-size:.9rem; padding:6px 12px; background:rgba(255,255,255,0.05); border-radius:16px; }
+    .chat-footer { padding:12px 20px; background:rgba(0,0,0,0.3); border-top:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .chat-footer input[type="text"] { flex:1; padding:12px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:30px; color:#fff; font-size:1rem; outline:none; min-width:120px; }
+    .chat-footer input[type="text"]:focus { border-color:#8b5cf6; }
+    .chat-footer .btn { background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none; border-radius:30px; padding:12px 20px; color:#fff; font-weight:600; cursor:pointer; transition:.2s; white-space:nowrap; }
+    .chat-footer .btn:active { transform:scale(.95); }
+    .chat-footer .emoji-btn, .chat-footer .file-btn { background:rgba(255,255,255,0.05); border:none; border-radius:50%; width:44px; height:44px; font-size:1.5rem; cursor:pointer; transition:.2s; display:flex; align-items:center; justify-content:center; }
+    .chat-footer .emoji-btn:hover, .chat-footer .file-btn:hover { background:rgba(255,255,255,0.1); }
+    .chat-footer .file-input { display:none; }
+    .emoji-picker { display:none; background:#1e1e2f; border-radius:20px; padding:12px; margin-top:6px; flex-wrap:wrap; gap:6px; max-width:280px; }
+    .emoji-picker span { font-size:1.8rem; cursor:pointer; transition:.1s; }
+    .emoji-picker span:hover { transform:scale(1.3); }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(239,68,68,0.6)} 70%{box-shadow:0 0 0 10px rgba(239,68,68,0)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
+    .messages-container::-webkit-scrollbar, .user-list::-webkit-scrollbar { width:4px; }
+    .messages-container::-webkit-scrollbar-track, .user-list::-webkit-scrollbar-track { background:transparent; }
+    .messages-container::-webkit-scrollbar-thumb, .user-list::-webkit-scrollbar-thumb { background:#6b21a5; border-radius:10px; }
+    @media(max-width:768px){ .sidebar { width:200px; min-width:200px; } .chat-header { padding:10px 16px; } .messages-container { padding:12px 14px; } .message { max-width:90%; } .chat-footer { padding:10px 12px; gap:6px; } .chat-footer input[type="text"] { padding:10px 14px; } }
+    .no-user-selected { display:flex; align-items:center; justify-content:center; height:100%; color:#6b7280; font-size:1.2rem; flex-direction:column; gap:10px; }
+    .no-user-selected span { font-size:3rem; }
+  </style>
+</head>
+<body>
+  <div id="authContainer" class="glass auth-container">
+  <h1>✨ Arpita Chats</h1>
+  <div id="signupForm">
+    <p class="sub">Create your account</p>
+    <input type="text" id="signupUsername" placeholder="Choose a username">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <input type="password" id="signupConfirm" placeholder="Confirm password">
+    <button id="signupBtn">🚀 Sign Up</button>
+    <div id="authError" class="error"></div>
+    <div class="toggle-text">
+      Arey meri jaan pehle se account hai kya?
+      <span class="link" id="goToLogin">fir to aap login karo</span>
+    </div>
+  </div>
+  <div id="loginForm" style="display:none;">
+    <p class="sub">Welcome back!</p>
+    <input type="text" id="loginUsername" placeholder="Username">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button id="loginBtn">🔐 Login</button>
+    <div id="loginError" class="error"></div>
+    <div class="toggle-text">
+      Naya account?
+      <span class="link" id="goToSignup">sign up karo</span>
+    </div>
+  </div>
+  </div>
+  <div id="chat">
+  <div class="chat-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>💬 Arpita Chats</h2>
+        <div class="my-name" id="myNameDisplay">You</div>
+      </div>
+      <div class="sidebar-search">
+        <input type="text" id="userSearch" placeholder="Search users...">
+      </div>
+      <div class="user-list" id="userList">
+        <!-- users will be injected -->
+      </div>
+    </div>
+    <!-- Chat Area -->
+    <div class="chat-area">
+      <div class="chat-header" id="chatHeader" style="display:none;">
+        <div class="chat-user-info">
+          <div class="avatar-small" id="chatAvatar">H</div>
+          <div>
+            <span class="name" id="chatPartnerName">User</span>
+            <span class="status-dot offline" id="chatPartnerStatus" style="width:8px;height:8px;display:inline-block;margin-left:6px;"></span>
+          </div>
+        </div>
+        <div class="chat-actions">
+          <button id="searchToggle">🔍</button>
+          <button id="logoutBtn">🚪 Logout</button>
+        </div>
+      </div>
+      <div id="searchBar" style="display:none; padding:6px 20px; background:rgba(0,0,0,0.2);">
+        <input type="text" id="searchInput" placeholder="Search messages..." style="width:100%; padding:8px 12px; border-radius:20px; background:rgba(255,255,255,0.05); border:1px solid #333; color:#fff;">
+      </div>
+      <div class="messages-container" id="messagesContainer">
+        <div class="no-user-selected" id="noUserMsg">
+          <span>👋</span>
+          Select a user to start chatting
+        </div>
+        <div class="typing-indicator" id="typingIndicator" style="display:none;">typing...</div>
+      </div>
+      <div class="chat-footer" id="chatFooter" style="display:none;">
+        <button class="emoji-btn" id="emojiBtn">😊</button>
+        <div class="emoji-picker" id="emojiPicker">
+          <span>❤️</span><span>😂</span><span>👍</span><span>😢</span><span>🔥</span>
+          <span>😍</span><span>🥳</span><span>😎</span><span>🤔</span><span>💯</span>
+        </div>
+        <button class="file-btn" id="fileBtn">📎</button>
+        <input type="file" class="file-input" id="fileInput" accept="image/*,video/*,application/*">
+        <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
+        <button class="btn" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+<script>
+  // ---------- E2EE helpers ----------
+  async function generateKeyPair() {
+    return await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']);
+  }
+  async function exportPublicKey(key) {
+    const raw = await crypto.subtle.exportKey('raw', key);
+    return btoa(String.fromCharCode(...new Uint8Array(raw)));
+  }
+  async function importPublicKey(base64) {
+    const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    return await crypto.subtle.importKey('raw', raw, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+  }
+  async function deriveSharedSecret(privateKey, publicKey) {
+    return await crypto.subtle.deriveKey({ name: 'ECDH', public: publicKey }, privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function encryptMessage(key, plaintext) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const enc = new TextEncoder();
+    const data = enc.encode(plaintext);
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+    return {
+      ciphertext: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
+      iv: btoa(String.fromCharCode(...iv)),
+      salt: btoa(String.fromCharCode(...salt))
+    };
+  }
+  async function decryptMessage(key, ciphertextB64, ivB64, saltB64) {
+    const ciphertext = Uint8Array.from(atob(ciphertextB64), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return new TextDecoder().decode(decrypted);
+  }
+
+  // ---------- DOM refs ----------
+  const authContainer = document.getElementById('authContainer');
+  const signupForm = document.getElementById('signupForm');
+  const loginForm = document.getElementById('loginForm');
+  const signupUsername = document.getElementById('signupUsername');
+  const signupPassword = document.getElementById('signupPassword');
+  const signupConfirm = document.getElementById('signupConfirm');
+  const signupBtn = document.getElementById('signupBtn');
+  const loginUsername = document.getElementById('loginUsername');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  const authError = document.getElementById('authError');
+  const loginError = document.getElementById('loginError');
+  const goToLogin = document.getElementById('goToLogin');
+  const goToSignup = document.getElementById('goToSignup');
+
+  const chatDiv = document.getElementById('chat');
+  const userList = document.getElementById('userList');
+  const userSearch = document.getElementById('userSearch');
+  const messagesContainer = document.getElementById('messagesContainer');
+  const noUserMsg = document.getElementById('noUserMsg');
+  const chatHeader = document.getElementById('chatHeader');
+  const chatFooter = document.getElementById('chatFooter');
+  const chatPartnerName = document.getElementById('chatPartnerName');
+  const chatPartnerStatus = document.getElementById('chatPartnerStatus');
+  const chatAvatar = document.getElementById('chatAvatar');
+  const myNameDisplay = document.getElementById('myNameDisplay');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const emojiPicker = document.getElementById('emojiPicker');
+  const fileBtn = document.getElementById('fileBtn');
+  const fileInput = document.getElementById('fileInput');
+  const searchToggle = document.getElementById('searchToggle');
+  const searchBar = document.getElementById('searchBar');
+  const searchInput = document.getElementById('searchInput');
+  const typingIndicator = document.getElementById('typingIndicator');
+
+  // ---------- State ----------
+  let socket = null;
+  let token = null;
+  let userId = null;
+  let myUsername = '';
+  let privateKey = null;
+  let publicKey = null;
+
+  // Map of chat partners: { partnerId: { sharedKey, messages, unread, partnerData } }
+  let chatRooms = {};
+  let activePartnerId = null;
+  let typingTimeout = null;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let replyToId = null;
+  let readMarked = new Set();
+
+  // ---------- Toggle Auth ----------
+  goToLogin.addEventListener('click', () => { signupForm.style.display = 'none'; loginForm.style.display = 'block'; authError.textContent=''; loginError.textContent=''; });
+  goToSignup.addEventListener('click', () => { loginForm.style.display = 'none'; signupForm.style.display = 'block'; authError.textContent=''; loginError.textContent=''; });
+
+  // ---------- Sign-up ----------
+  signupBtn.addEventListener('click', async () => {
+    authError.textContent = '';
+    const username = signupUsername.value.trim();
+    const password = signupPassword.value.trim();
+    const confirm = signupConfirm.value.trim();
+    if (!username || !password || !confirm) { authError.textContent = 'Please fill all fields.'; return; }
+    if (password !== confirm) { authError.textContent = 'Passwords do not match.'; return; }
+    if (password.length < 4) { authError.textContent = 'Password must be at least 4 characters.'; return; }
+    try {
+      const pair = await generateKeyPair();
+      privateKey = pair.privateKey;
+      publicKey = pair.publicKey;
+      const pubB64 = await exportPublicKey(publicKey);
+      const privJwk = await crypto.subtle.exportKey('jwk', privateKey);
+      const pubJwk = await crypto.subtle.exportKey('jwk', publicKey);
+      localStorage.setItem('privKey', JSON.stringify(privJwk));
+      localStorage.setItem('pubKey', JSON.stringify(pubJwk));
+
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, publicKey: pubB64 })
+      });
+      const data = await res.json();
+      if (!res.ok) { authError.textContent = '❌ ' + (data.error || 'Sign-up failed'); return; }
+      token = data.token;
+      userId = data.userId;
+      myUsername = username;
+      startApp();
+    } catch (err) { authError.textContent = '❌ ' + err.message; console.error(err); }
+  });
+
+  // ---------- Login ----------
+  loginBtn.addEventListener('click', async () => {
+    loginError.textContent = '';
+    const username = loginUsername.value.trim();
+    const password = loginPassword.value.trim();
+    if (!username || !password) { loginError.textContent = 'Please fill both fields.'; return; }
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) { loginError.textContent = '❌ ' + (data.error || 'Invalid credentials'); return; }
+      token = data.token;
+      userId = data.userId;
+      myUsername = username;
+
+      // Load keys
+      const storedPriv = localStorage.getItem('privKey');
+      const storedPub = localStorage.getItem('pubKey');
+      if (storedPriv && storedPub) {
+        privateKey = await crypto.subtle.importKey('jwk', JSON.parse(storedPriv), { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']);
+        publicKey = await crypto.subtle.importKey('jwk', JSON.parse(storedPub), { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+      } else {
+        // generate and update server
+        const pair = await generateKeyPair();
+        privateKey = pair.privateKey;
+        publicKey = pair.publicKey;
+        const privJwk = await crypto.subtle.exportKey('jwk', privateKey);
+        const pubJwk = await crypto.subtle.exportKey('jwk', publicKey);
+        localStorage.setItem('privKey', JSON.stringify(privJwk));
+        localStorage.setItem('pubKey', JSON.stringify(pubJwk));
+        const pubB64 = await exportPublicKey(publicKey);
+        await fetch('/api/update-public-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, publicKey: pubB64 })
+        });
+      }
+      startApp();
+    } catch (err) { loginError.textContent = '❌ ' + err.message; console.error(err); }
+  });
+
+  // ---------- Start App (after auth) ----------
+  async function startApp() {
+    try {
+      // Connect socket
+      socket = io({ auth: { token } });
+      socket.on('connect', () => console.log('Socket connected'));
+
+      // Load user list
+      await loadUserList();
+
+      // Show chat
+      authContainer.style.display = 'none';
+      chatDiv.style.display = 'block';
+      myNameDisplay.textContent = myUsername;
+
+      // Socket events
+      socket.on('user_online', ({ userId: uid }) => {
+        updateUserStatus(uid, true);
+        if (activePartnerId == uid) {
+          chatPartnerStatus.className = 'status-dot online';
+        }
+      });
+      socket.on('user_offline', ({ userId: uid }) => {
+        updateUserStatus(uid, false);
+        if (activePartnerId == uid) {
+          chatPartnerStatus.className = 'status-dot offline';
+        }
+      });
+      socket.on('new_message', async (msg) => {
+        const senderId = msg.senderId;
+        if (senderId == userId) return; // own message handled separately
+        // Find room
+        if (!chatRooms[senderId]) {
+          // fetch partner info and create room
+          await loadUserList(); // refresh list
+        }
+        const room = chatRooms[senderId];
+        if (room) {
+          const plain = await decryptMessage(room.sharedKey, msg.encryptedContent, msg.iv, msg.salt);
+          const newMsg = { ...msg, content: plain, isMine: false };
+          room.messages.push(newMsg);
+          if (activePartnerId == senderId) {
+            renderMessages(senderId);
+            scrollToBottom();
+          } else {
+            // increase unread
+            room.unread = (room.unread || 0) + 1;
+            updateUserList();
+          }
+          socket.emit('mark_delivered', { messageId: msg.id });
+        }
+      });
+      socket.on('message_sent', (data) => {
+        // update temp id
+        const room = chatRooms[activePartnerId];
+        if (room) {
+          const idx = room.messages.findIndex(m => m.id === data.id);
+          if (idx >= 0) room.messages[idx].id = data.id;
+        }
+      });
+      socket.on('delivered_receipt', ({ messageId }) => {
+        const room = chatRooms[activePartnerId];
+        if (room) {
+          const msg = room.messages.find(m => m.id === messageId);
+          if (msg) { msg.delivered = true; updateMessageStatus(messageId); }
+        }
+      });
+      socket.on('read_receipt', ({ messageId }) => {
+        const room = chatRooms[activePartnerId];
+        if (room) {
+          const msg = room.messages.find(m => m.id === messageId);
+          if (msg) { msg.read = true; updateMessageStatus(messageId); }
+        }
+      });
+      socket.on('typing', ({ userId: uid, isTyping }) => {
+        if (uid == activePartnerId) {
+          typingIndicator.style.display = isTyping ? 'block' : 'none';
+        }
+      });
+      socket.on('message_deleted', ({ messageId }) => {
+        const room = chatRooms[activePartnerId];
+        if (room) {
+          const msg = room.messages.find(m => m.id === messageId);
+          if (msg) { msg.is_deleted = 1; msg.content = '[deleted]'; renderMessages(activePartnerId); }
+        }
+      });
+      socket.on('reaction_added', ({ messageId, reaction }) => {
+        const room = chatRooms[activePartnerId];
+        if (room) {
+          const msg = room.messages.find(m => m.id === messageId);
+          if (msg) { msg.reaction = reaction; renderMessages(activePartnerId); }
+        }
+      });
+
+      // Auto-select first user if any
+      const keys = Object.keys(chatRooms);
+      if (keys.length > 0) {
+        selectUser(parseInt(keys[0]));
+      }
+    } catch (err) {
+      alert('Error starting app: ' + err.message);
+      console.error(err);
+    }
+  }
+
+  // ---------- Load User List ----------
+  async function loadUserList() {
+    try {
+      const res = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const users = await res.json();
+      if (!res.ok) throw new Error(users.error || 'Failed to load users');
+      // For each user, ensure room exists
+      for (const u of users) {
+        if (!chatRooms[u.id]) {
+          // Derive shared key
+          const otherPub = await importPublicKey(u.public_key);
+          const sharedKey = await deriveSharedSecret(privateKey, otherPub);
+          chatRooms[u.id] = {
+            partnerData: u,
+            sharedKey,
+            messages: [],
+            unread: 0
+          };
+        } else {
+          // update partner data
+          chatRooms[u.id].partnerData = u;
+        }
+      }
+      updateUserList();
+    } catch (err) {
+      console.error('loadUserList error:', err);
+    }
+  }
+
+  // ---------- Update User List UI ----------
+  function updateUserList() {
+    const search = userSearch.value.trim().toLowerCase();
+    let html = '';
+    const sorted = Object.values(chatRooms)
+      .filter(r => r.partnerData.username.toLowerCase().includes(search))
+      .sort((a,b) => a.partnerData.username.localeCompare(b.partnerData.username));
+
+    for (const room of sorted) {
+      const u = room.partnerData;
+      const isActive = (activePartnerId == u.id);
+      const unread = room.unread || 0;
+      const status = u.is_online ? 'online' : 'offline';
+      const initial = u.username.charAt(0).toUpperCase();
+      html += `
+        <div class="user-item ${isActive ? 'active' : ''}" data-id="${u.id}">
+          <div class="user-avatar" style="background:linear-gradient(135deg,${getColor(u.id)},${getColor2(u.id)});">${initial}</div>
+          <div class="user-info">
+            <div class="name">${u.username}</div>
+            <div class="status-text">
+              <span class="status-dot ${status}"></span> ${status === 'online' ? 'Online' : 'Offline'}
+            </div>
+          </div>
+          ${unread > 0 ? `<div class="unread">${unread}</div>` : ''}
+        </div>
+      `;
+    }
+    userList.innerHTML = html;
+
+    // Attach click events
+    document.querySelectorAll('.user-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = parseInt(el.dataset.id);
+        selectUser(id);
+      });
+    });
+  }
+
+  // Color helpers for avatar
+  function getColor(id) { const colors = ['#7c3aed','#db2777','#2563eb','#059669','#d97706']; return colors[id % colors.length]; }
+  function getColor2(id) { const colors = ['#a78bfa','#f472b6','#60a5fa','#34d399','#fbbf24']; return colors[id % colors.length]; }
+
+  function updateUserStatus(uid, online) {
+    if (chatRooms[uid]) {
+      chatRooms[uid].partnerData.is_online = online ? 1 : 0;
+      updateUserList();
+    }
+  }
+
+  // ---------- Select a user ----------
+  async function selectUser(partnerId) {
+    if (activePartnerId == partnerId) return;
+    // Clear unread
+    if (chatRooms[partnerId]) {
+      chatRooms[partnerId].unread = 0;
+      updateUserList();
+    }
+    activePartnerId = partnerId;
+    const room = chatRooms[partnerId];
+    if (!room) return;
+    const u = room.partnerData;
+    // Update header
+    chatHeader.style.display = 'flex';
+    chatFooter.style.display = 'flex';
+    chatPartnerName.textContent = u.username;
+    chatAvatar.textContent = u.username.charAt(0).toUpperCase();
+    chatAvatar.style.background = `linear-gradient(135deg,${getColor(u.id)},${getColor2(u.id)})`;
+    chatPartnerStatus.className = 'status-dot ' + (u.is_online ? 'online' : 'offline');
+
+    // Load messages if not loaded
+    if (room.messages.length === 0) {
+      try {
+        const res = await fetch(`/api/messages/${partnerId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const msgs = await res.json();
+        for (const m of msgs) {
+          if (m.is_deleted) m.content = '[deleted]';
+          else m.content = await decryptMessage(room.sharedKey, m.encrypted_content, m.iv, m.salt);
+          m.isMine = (m.sender_id === userId);
+          room.messages.push(m);
+        }
+      } catch (err) { console.error(err); }
+    }
+    renderMessages(partnerId);
+    scrollToBottom();
+    // Mark messages as read
+    room.messages.forEach(m => {
+      if (!m.isMine && !m.read) {
+        socket.emit('mark_read', { messageId: m.id });
+        m.read = true;
+      }
+    });
+  }
+
+  // ---------- Render messages ----------
+  function renderMessages(partnerId) {
+    const room = chatRooms[partnerId];
+    if (!room) return;
+    // Hide no user msg
+    noUserMsg.style.display = 'none';
+    messagesContainer.innerHTML = '';
+    room.messages.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = 'message ' + (msg.isMine ? 'mine' : 'other');
+      div.dataset.id = msg.id;
+      let html = '';
+      if (msg.reply_to_id) {
+        const replied = room.messages.find(m => m.id === msg.reply_to_id);
+        if (replied) html += `<div class="reply-indicator">↩️ ${replied.content.substring(0,30)}</div>`;
+      }
+      html += `<span>${msg.content}</span>`;
+      const status = msg.isMine ? (msg.read ? '✓✓ Read' : msg.delivered ? '✓✓ Delivered' : '✓ Sent') : '';
+      const time = new Date(msg.sentAt).toLocaleTimeString();
+      html += `<div class="time"><span>${time}</span><span class="status">${status}</span></div>`;
+      if (msg.reaction) html += `<div class="reaction">${msg.reaction}</div>`;
+      if (msg.isMine) html += `<button class="delete-btn" data-id="${msg.id}">✕</button>`;
+      div.innerHTML = html;
+      // delete
+      const del = div.querySelector('.delete-btn');
+      if (del) del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(e.target.dataset.id);
+        if (confirm('Delete this message?')) {
+          socket.emit('delete_message', { messageId: id });
+        }
+      });
+      // reaction
+      div.addEventListener('dblclick', () => {
+        const reaction = prompt('Enter reaction emoji (e.g., ❤️)') || '❤️';
+        socket.emit('add_reaction', { messageId: msg.id, reaction });
+      });
+      // reply
+      div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        replyToId = msg.id;
+        messageInput.placeholder = `Replying to: ${msg.content.substring(0,20)}...`;
+      });
+      messagesContainer.appendChild(div);
+    });
+    // typing indicator placeholder
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.style.display = 'none';
+    typingDiv.textContent = 'typing...';
+    messagesContainer.appendChild(typingDiv);
+  }
+
+  function updateMessageStatus(id) {
+    const room = chatRooms[activePartnerId];
+    if (!room) return;
+    const msg = room.messages.find(m => m.id === id);
+    if (!msg) return;
+    const el = messagesContainer.querySelector(`.message[data-id="${id}"] .status`);
+    if (el) {
+      el.textContent = msg.read ? '✓✓ Read' : msg.delivered ? '✓✓ Delivered' : '✓ Sent';
+    }
+  }
+
+  function scrollToBottom() {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  // ---------- Send Message ----------
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+  async function sendMessage() {
+    if (!activePartnerId) return;
+    let text = messageInput.value.trim();
+    if (!text && !replyToId) return;
+    const replyId = replyToId;
+    replyToId = null;
+    const room = chatRooms[activePartnerId];
+    if (!room) return;
+    const { ciphertext, iv, salt } = await encryptMessage(room.sharedKey, text);
+    const tempId = Date.now();
+    const msgObj = {
+  id: tempId,
+      senderId: userId,
+      receiverId: activePartnerId,
+      encryptedContent: ciphertext,
+      iv,
+      salt,
+      reply_to_id: replyId || null,
+      content: text,
+      isMine: true,
+      sentAt: Date.now(),
+      delivered: false,
+      read: false,
+      is_deleted: 0
+    };
+    room.messages.push(msgObj);
+    renderMessages(activePartnerId);
+    scrollToBottom();
+    socket.emit('private_message', {
+      receiverId: activePartnerId,
+      encryptedContent: ciphertext,
+      iv,
+      salt,
+      replyToId: replyId
+    });
+    messageInput.value = '';
+    if (typingTimeout) clearTimeout(typingTimeout);
+    socket.emit('typing', { receiverId: activePartnerId, isTyping: false });
+  }
+
+  // ---------- Typing ----------
+  messageInput.addEventListener('input', () => {
+    if (!socket || !activePartnerId) return;
+    socket.emit('typing', { receiverId: activePartnerId, isTyping: true });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('typing', { receiverId: activePartnerId, isTyping: false });
+    }, 800);
+  });
+
+  // ---------- Logout ----------
+  logoutBtn.addEventListener('click', () => {
+    if (socket) socket.disconnect();
+    fetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+    localStorage.clear();
+    location.reload();
+  });
+
+  // ---------- Emoji picker ----------
+  emojiBtn.addEventListener('click', () => {
+    emojiPicker.style.display = emojiPicker.style.display === 'flex' ? 'none' : 'flex';
+  });
+  emojiPicker.querySelectorAll('span').forEach(el => {
+    el.addEventListener('click', () => {
+      messageInput.value += el.textContent;
+      messageInput.focus();
+      emojiPicker.style.display = 'none';
+    });
+  });
+
+  // ---------- File sharing ----------
+  fileBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result;
+      messageInput.value = `📎 ${file.name} (${(file.size/1024).toFixed(1)} KB)\n${base64}`;
+      sendMessage();
+      fileInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---------- Search ----------
+  searchToggle.addEventListener('click', () => {
+    searchBar.style.display = searchBar.style.display === 'none' ? 'block' : 'none';
+    if (searchBar.style.display === 'block') searchInput.focus();
+  });
+  searchInput.addEventListener('input', async () => {
+    const q = searchInput.value.trim();
+    if (!q) { renderMessages(activePartnerId); return; }
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, query: q })
+    });
+    const results = await res.json();
+    const ids = results.map(r => r.id);
+    const room = chatRooms[activePartnerId];
+    if (!room) return;
+    const filtered = room.messages.filter(m => ids.includes(m.id));
+    messagesContainer.innerHTML = '';
+    filtered.forEach(m => {
+      // render temporarily
+      const div = document.createElement('div');
+      div.className = 'message ' + (m.isMine ? 'mine' : 'other');
+      div.innerHTML = `<span>${m.content}</span><div class="time">${new Date(m.sentAt).toLocaleTimeString()}</div>`;
+      messagesContainer.appendChild(div);
+    });
+    if (filtered.length === 0) {
+      const div = document.createElement('div');
+      div.textContent = 'No messages found';
+      div.style.color = '#9ca3af';
+      div.style.padding = '20px';
+      messagesContainer.appendChild(div);
+    }
+  });
+
+  // ---------- Read receipts on scroll ----------
+  messagesContainer.addEventListener('scroll', () => {
+    if (!activePartnerId) return;
+    const room = chatRooms[activePartnerId];
+    if (!room) return;
+    const msgs = messagesContainer.querySelectorAll('.message.other');
+    let lastVisible = null;
+    const rect = messagesContainer.getBoundingClientRect();
+    for (const el of msgs) {
+      const elRect = el.getBoundingClientRect();
+      if (elRect.top >= rect.top && elRect.bottom <= rect.bottom) {
+        lastVisible = el;
+      }
+    }
+    if (lastVisible) {
+      const id = parseInt(lastVisible.dataset.id);
+      if (!readMarked.has(id)) {
+        readMarked.add(id);
+        socket.emit('mark_read', { messageId: id });
+        const msg = room.messages.find(m => m.id === id);
+        if (msg) { msg.read = true; updateMessageStatus(id); }
+      }
+    }
+  });
+
+  // ---------- PWA ----------
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(() => console.log('SW registered'));
+  }
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // User search filter
+  userSearch.addEventListener('input', updateUserList);
+
+  console.log('Arpita Chats loaded.');
+</script>
+</body>
+</html>
