@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Arpita Chats</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+    body { background:#0b0b1a; color:#fff; height:100vh; display:flex; justify-content:center; align-items:center; }
+    .glass { background:rgba(255,255,255,0.05); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.08); border-radius:32px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.8); }
+    #login { width:90%; max-width:400px; padding:40px 30px; text-align:center; animation:fadeIn .6s ease; }
+    #login h1 { font-size:2.5rem; font-weight:800; background:linear-gradient(135deg,#f472b6,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+    #login p.sub { color:#9ca3af; margin-bottom:30px; }
+    #login input { width:100%; padding:14px 18px; margin-bottom:16px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:16px; color:#fff; font-size:1rem; outline:none; transition:.2s; }
+    #login input:focus { border-color:#a78bfa; box-shadow:0 0 0 3px rgba(167,139,250,0.3); }
+    #login button { width:100%; padding:14px; border:none; border-radius:30px; font-size:1.1rem; font-weight:600; background:linear-gradient(135deg,#ec4899,#8b5cf6); color:#fff; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+    #login button:hover { transform:scale(1.02); box-shadow:0 10px 20px -8px rgba(139,92,246,0.5); }
+    #login .error { color:#f87171; font-size:.9rem; margin-top:10px; }
+    #login .block-msg { color:#fbbf24; font-size:.9rem; margin-top:6px; }
+    #chat { display:none; width:100%; height:100vh; max-height:800px; max-width:1200px; margin:0 auto; flex-direction:column; background:rgba(0,0,0,0.4); backdrop-filter:blur(30px); border-radius:32px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); animation:fadeIn .4s ease; }
+    @media(min-width:768px){ #chat { height:90vh; margin:5vh auto; } }
+    .chat-header { display:flex; justify-content:space-between; align-items:center; padding:16px 24px; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.05); }
+    .chat-header .user-info { display:flex; align-items:center; gap:12px; }
+    .chat-header .status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; transition:.3s; }
+    .online { background:#34d399; box-shadow:0 0 8px #34d399; }
+    .offline { background:#6b7280; }
+    .chat-header .username { font-weight:600; font-size:1.2rem; }
+    .chat-header button { background:rgba(255,255,255,0.05); border:none; color:#d1d5db; padding:8px 16px; border-radius:20px; cursor:pointer; font-size:.9rem; }
+    .chat-header button:hover { background:rgba(255,255,255,0.1); }
+    .messages-container { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:6px; scroll-behavior:smooth; }
+    .messages-container .message { max-width:75%; padding:10px 16px; border-radius:20px; word-wrap:break-word; position:relative; animation:slideUp .25s ease; }
+    .message.mine { align-self:flex-end; background:linear-gradient(135deg,#7c3aed,#db2777); border-bottom-right-radius:4px; }
+    .message.other { align-self:flex-start; background:rgba(255,255,255,0.08); border-bottom-left-radius:4px; }
+    .message .time { font-size:.65rem; opacity:.6; margin-top:4px; display:flex; justify-content:flex-end; gap:6px; align-items:center; }
+    .message .status { font-size:.7rem; }
+    .message .reply-indicator { font-size:.7rem; opacity:.7; border-left:2px solid #a78bfa; padding-left:8px; margin-bottom:4px; }
+    .message .reaction { position:absolute; bottom:-8px; right:8px; background:#1f1f2e; border-radius:12px; padding:0 6px; font-size:1.2rem; line-height:1.6; }
+    .message .delete-btn { position:absolute; top:-6px; right:-6px; background:rgba(239,68,68,0.8); border:none; border-radius:50%; width:20px; height:20px; color:#fff; font-size:.7rem; cursor:pointer; display:none; }
+    .message:hover .delete-btn { display:block; }
+    .typing-indicator { align-self:flex-start; color:#9ca3af; font-size:.9rem; padding:6px 12px; background:rgba(255,255,255,0.05); border-radius:16px; }
+    .chat-footer { padding:12px 20px; background:rgba(0,0,0,0.3); border-top:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .chat-footer input[type="text"] { flex:1; padding:12px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:30px; color:#fff; font-size:1rem; outline:none; min-width:120px; }
+    .chat-footer input[type="text"]:focus { border-color:#8b5cf6; }
+    .chat-footer .btn { background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none; border-radius:30px; padding:12px 20px; color:#fff; font-weight:600; cursor:pointer; transition:.2s; white-space:nowrap; }
+    .chat-footer .btn:active { transform:scale(.95); }
+    .chat-footer .emoji-btn, .chat-footer .file-btn, .chat-footer .voice-btn { background:rgba(255,255,255,0.05); border:none; border-radius:50%; width:44px; height:44px; font-size:1.5rem; cursor:pointer; transition:.2s; display:flex; align-items:center; justify-content:center; }
+    .chat-footer .emoji-btn:hover, .chat-footer .file-btn:hover, .chat-footer .voice-btn:hover { background:rgba(255,255,255,0.1); }
+    .chat-footer .file-input { display:none; }
+    .chat-footer .voice-btn.recording { background:#ef4444; animation:pulse 1s infinite; }
+    .emoji-picker { display:none; background:#1e1e2f; border-radius:20px; padding:12px; margin-top:6px; flex-wrap:wrap; gap:6px; max-width:280px; }
+    .emoji-picker span { font-size:1.8rem; cursor:pointer; transition:.1s; }
+    .emoji-picker span:hover { transform:scale(1.3); }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(239,68,68,0.6)} 70%{box-shadow:0 0 0 10px rgba(239,68,68,0)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
+    .messages-container::-webkit-scrollbar { width:4px; }
+    .messages-container::-webkit-scrollbar-track { background:transparent; }
+    .messages-container::-webkit-scrollbar-thumb { background:#6b21a5; border-radius:10px; }
+    @media(max-width:600px){ .chat-header{padding:12px 16px} .messages-container{padding:12px 14px} .message{max-width:90%} .chat-footer{padding:10px 12px;gap:6px} .chat-footer input[type="text"]{padding:10px 14px} }
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+<div id="login" class="glass">
+  <h1>✨ Arpita Chats</h1>
+  <p class="sub">Private &amp; encrypted for two</p>
+  <input type="text" id="loginUsername" placeholder="Username">
+  <input type="password" id="loginPassword" placeholder="Password">
+  <button id="loginBtn">🔐 Login</button>
+  <div id="loginError" class="error"></div>
+  <div id="blockMsg" class="block-msg" style="display:none;">⚠️ Your IP has been blocked due to too many failed attempts. Try again later.</div>
+</div>
+<!-- CHAT -->
+<div id="chat">
+  <div class="chat-header">
+    <div class="user-info">
+      <span class="status-dot offline" id="statusDot"></span>
+      <span class="username" id="chatUsername">Harsh_kaju</span>
+      <span style="font-size:0.8rem;color:#9ca3af;" id="typingStatus"></span>
+    </div>
+    <div>
+      <button id="searchToggle">🔍</button>
+      <button id="logoutBtn">🚪 Logout</button>
+    </div>
+  </div>
+  <div id="searchBar" style="display:none; padding:6px 20px; background:rgba(0,0,0,0.2);">
+    <input type="text" id="searchInput" placeholder="Search messages..." style="width:100%; padding:8px 12px; border-radius:20px; background:rgba(255,255,255,0.05); border:1px solid #333; color:#fff;">
+  </div>
+  <div class="messages-container" id="messagesContainer">
+    <div class="typing-indicator" id="typingIndicator" style="display:none;">typing...</div>
+  </div>
+  <div class="chat-footer">
+    <button class="emoji-btn" id="emojiBtn">😊</button>
+    <div class="emoji-picker" id="emojiPicker">
+      <span>❤️</span><span>😂</span><span>👍</span><span>😢</span><span>🔥</span>
+      <span>😍</span><span>🥳</span><span>😎</span><span>🤔</span><span>💯</span>
+    </div>
+    <button class="file-btn" id="fileBtn">📎</button>
+    <input type="file" class="file-input" id="fileInput" accept="image/*,video/*,audio/*,application/*">
+    <button class="voice-btn" id="voiceBtn">🎤</button>
+    <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
+    <button class="btn" id="sendBtn">Send</button>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // ---------- E2EE helpers ----------
+  async function generateKeyPair() {
+    return await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']);
+  }
+  async function exportPublicKey(key) {
+    const raw = await crypto.subtle.exportKey('raw', key);
+    return btoa(String.fromCharCode(...new Uint8Array(raw)));
+  }
+  async function importPublicKey(base64) {
+    const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    return await crypto.subtle.importKey('raw', raw, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+  }
+  async function deriveSharedSecret(privateKey, publicKey) {
+    return await crypto.subtle.deriveKey({ name: 'ECDH', public: publicKey }, privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function encryptMessage(key, plaintext) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const enc = new TextEncoder();
+    const data = enc.encode(plaintext);
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+    return {
+      ciphertext: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
+      iv: btoa(String.fromCharCode(...iv)),
+      salt: btoa(String.fromCharCode(...salt))
+    };
+  }
+  async function decryptMessage(key, ciphertextB64, ivB64, saltB64) {
+    const ciphertext = Uint8Array.from(atob(ciphertextB64), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return new TextDecoder().decode(decrypted);
+  }
+
+  // ---------- DOM refs ----------
+  const loginDiv = document.getElementById('login');
+  const chatDiv = document.getElementById('chat');
+  const loginUsername = document.getElementById('loginUsername');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+  const blockMsg = document.getElementById('blockMsg');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const messagesContainer = document.getElementById('messagesContainer');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const chatUsername = document.getElementById('chatUsername');
+  const statusDot = document.getElementById('statusDot');
+  const typingStatus = document.getElementById('typingStatus');
+  const typingIndicator = document.getElementById('typingIndicator');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const emojiPicker = document.getElementById('emojiPicker');
+  const fileBtn = document.getElementById('fileBtn');
+  const fileInput = document.getElementById('fileInput');
+  const voiceBtn = document.getElementById('voiceBtn');
+  const searchToggle = document.getElementById('searchToggle');
+  const searchBar = document.getElementById('searchBar');
+  const searchInput = document.getElementById('searchInput');
+
+  // ---------- State ----------
+  let socket = null;
+  let token = null;
+  let userId = null;
+  let otherUserId = null;
+  let otherUsername = '';
+  let sharedKey = null;
+  let privateKey = null;
+  let publicKey = null;
+  let isOnline = false;
+  let typingTimeout = null;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let replyToId = null;
+  let messagesData = [];
+  let readMarked = new Set();
+
+  // Fake IP block counter (client side)
+  let failCount = parseInt(sessionStorage.getItem('failCount')) || 0;
+  const MAX_FAILS = 10;
+
+  // ---------- Login logic ----------
+  loginBtn.addEventListener('click', async () => {
+    // Check if blocked
+    if (failCount >= MAX_FAILS) {
+      blockMsg.style.display = 'block';
+      loginError.textContent = 'Too many failed attempts. IP blocked.';
+      return;
+    }
+
+    const username = loginUsername.value.trim();
+    const password = loginPassword.value.trim();
+    if (!username || !password) {
+      loginError.textContent = 'Please fill all fields';
+      return;
+    }
+    loginError.textContent = '';
+    blockMsg.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // Increment fail count
+        failCount++;
+        sessionStorage.setItem('failCount', failCount);
+        if (failCount >= MAX_FAILS) {
+          blockMsg.style.display = 'block';
+          loginError.textContent = 'Your IP has been blocked.';
+        } else {
+          loginError.textContent = `Invalid credentials. Attempts left: ${MAX_FAILS - failCount}`;
+        }
+        return; // stop here
+      }
+
+      // Success – reset fail count
+      failCount = 0;
+      sessionStorage.setItem('failCount', '0');
+
+      token = data.token;
+      userId = data.userId;
+      otherUserId = userId === 1 ? 2 : 1;
+
+      // Load other user info
+      const otherRes = await fetch(`/api/other-user/${otherUserId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!otherRes.ok) throw new Error('Failed to fetch other user');
+      const otherData = await otherRes.json();
+      otherUsername = otherData.username;
+      chatUsername.textContent = otherUsername;
+      isOnline = otherData.is_online === 1;
+      statusDot.className = 'status-dot ' + (isOnline ? 'online' : 'offline');
+
+      // E2EE: generate or load key pair
+      let privKey, pubKey;
+      const storedPriv = localStorage.getItem('privKey_' + userId);
+      const storedPub = localStorage.getItem('pubKey_' + userId);
+      if (storedPriv && storedPub) {
+        privKey = await crypto.subtle.importKey('jwk', JSON.parse(storedPriv), { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']);
+        pubKey = await crypto.subtle.importKey('jwk', JSON.parse(storedPub), { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+      } else {
+        const pair = await generateKeyPair();
+        privKey = pair.privateKey;
+        pubKey = pair.publicKey;
+        const privJwk = await crypto.subtle.exportKey('jwk', privKey);
+        const pubJwk = await crypto.subtle.exportKey('jwk', pubKey);
+        localStorage.setItem('privKey_' + userId, JSON.stringify(privJwk));
+        localStorage.setItem('pubKey_' + userId, JSON.stringify(pubJwk));
+        const pubB64 = await exportPublicKey(pubKey);
+        await fetch('/api/update-public-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, publicKey: pubB64 })
+        });
+      }
+      privateKey = privKey;
+      publicKey = pubKey;
+
+      const otherPub = await importPublicKey(otherData.public_key);
+      sharedKey = await deriveSharedSecret(privateKey, otherPub);
+
+      // Connect Socket.IO
+      socket = io({ auth: { token } });
+
+      socket.on('connect', () => console.log('Socket connected'));
+
+      socket.on('new_message', async (msg) => {
+        if (msg.senderId === otherUserId) {
+          const plain = await decryptMessage(sharedKey, msg.encryptedContent, msg.iv, msg.salt);
+          const newMsg = { ...msg, content: plain, isMine: false };
+          messagesData.push(newMsg);
+          renderMessage(newMsg);
+          scrollToBottom();
+          socket.emit('mark_delivered', { messageId: msg.id });
+        }
+      });
+
+      socket.on('message_sent', (data) => {
+        const idx = messagesData.findIndex(m => m.id === data.id);
+        if (idx >= 0) messagesData[idx].id = data.id;
+      });
+
+      socket.on('delivered_receipt', ({ messageId }) => {
+        const msg = messagesData.find(m => m.id === messageId);
+        if (msg) { msg.delivered = true; updateMessageStatus(messageId); }
+      });
+
+      socket.on('read_receipt', ({ messageId }) => {
+        const msg = messagesData.find(m => m.id === messageId);
+        if (msg) { msg.read = true; updateMessageStatus(messageId); }
+      });
+
+      socket.on('typing', ({ userId: uid, isTyping }) => {
+        if (uid === otherUserId) {
+          typingIndicator.style.display = isTyping ? 'block' : 'none';
+        }
+      });
+
+      socket.on('user_online', ({ userId: uid }) => {
+        if (uid === otherUserId) { isOnline = true; statusDot.className = 'status-dot online'; }
+      });
+      socket.on('user_offline', ({ userId: uid }) => {
+        if (uid === otherUserId) { isOnline = false; statusDot.className = 'status-dot offline'; }
+      });
+
+      socket.on('message_deleted', ({ messageId }) => {
+        const msg = messagesData.find(m => m.id === messageId);
+        if (msg) { msg.is_deleted = 1; msg.content = '[deleted]'; renderAllMessages(); }
+      });
+
+      socket.on('reaction_added', ({ messageId, reaction }) => {
+        const msg = messagesData.find(m => m.id === messageId);
+        if (msg) { msg.reaction = reaction; renderAllMessages(); }
+      });
+
+      // Load previous messages
+      const msgRes = await fetch(`/api/messages/${otherUserId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!msgRes.ok) throw new Error('Failed to load messages');
+      const msgs = await msgRes.json();
+      messagesData = [];
+      for (const m of msgs) {
+        if (m.is_deleted) {
+          m.content = '[deleted]';
+        } else {
+          m.content = await decryptMessage(sharedKey, m.encrypted_content, m.iv, m.salt);
+        }
+        m.isMine = (m.sender_id === userId);
+        messagesData.push(m);
+      }
+      renderAllMessages();
+      scrollToBottom();
+
+      // Show chat
+      loginDiv.style.display = 'none';
+      chatDiv.style.display = 'flex';
+    } catch (err) {
+      loginError.textContent = err.message || 'Something went wrong.';
+    }
+  });
+
+  // ---------- Logout ----------
+  logoutBtn.addEventListener('click', () => {
+    if (socket) socket.disconnect();
+    fetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+    localStorage.clear();
+    sessionStorage.clear();
+    location.reload();
+  });
+
+  // ---------- Send message ----------
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+  async function sendMessage() {
+    let text = messageInput.value.trim();
+    if (!text && !replyToId) return;
+    const replyId = replyToId;
+    replyToId = null;
+    if (!sharedKey) return;
+    const { ciphertext, iv, salt } = await encryptMessage(sharedKey, text);
+    const tempId = Date.now();
+    const msgObj = {
+      id: tempId,
+      senderId: userId,
+      receiverId: otherUserId,
+      encryptedContent: ciphertext,
+      iv,
+      salt,
+      reply_to_id: replyId || null,
+      content: text,
+      isMine: true,
+      sentAt: Date.now(),
+      delivered: false,
+      read: false,
+      is_deleted: 0
+    };
+    messagesData.push(msgObj);
+    renderMessage(msgObj);
+    scrollToBottom();
+    socket.emit('private_message', {
+      receiverId: otherUserId,
+      encryptedContent: ciphertext,
+      iv,
+      salt,
+      replyToId: replyId
+    });
+    messageInput.value = '';
+    if (typingTimeout) clearTimeout(typingTimeout);
+    socket.emit('typing', { receiverId: otherUserId, isTyping: false });
+  }
+
+  // ---------- Typing ----------
+  messageInput.addEventListener('input', () => {
+    if (!socket) return;
+    socket.emit('typing', { receiverId: otherUserId, isTyping: true });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('typing', { receiverId: otherUserId, isTyping: false });
+    }, 800);
+  });
+
+  // ---------- Render functions ----------
+  function renderMessage(msg) {
+    const div = document.createElement('div');
+    div.className = 'message ' + (msg.isMine ? 'mine' : 'other');
+    div.dataset.id = msg.id;
+    let html = '';
+    if (msg.reply_to_id) {
+      const replied = messagesData.find(m => m.id === msg.reply_to_id);
+      if (replied) html += `<div class="reply-indicator">↩️ ${replied.content.substring(0,30)}</div>`;
+    }
+    html += `<span>${msg.content}</span>`;
+    const status = msg.isMine ? (msg.read ? '✓✓ Read' : msg.delivered ? '✓✓ Delivered' : '✓ Sent') : '';
+    const time = new Date(msg.sentAt).toLocaleTimeString();
+    html += `<div class="time"><span>${time}</span><span class="status">${status}</span></div>`;
+    if (msg.reaction) html += `<div class="reaction">${msg.reaction}</div>`;
+    if (msg.isMine) html += `<button class="delete-btn" data-id="${msg.id}">✕</button>`;
+    div.innerHTML = html;
+
+    const del = div.querySelector('.delete-btn');
+    if (del) del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(e.target.dataset.id);
+      if (confirm('Delete this message?')) {
+        socket.emit('delete_message', { messageId: id });
+      }
+    });
+
+    div.addEventListener('dblclick', () => {
+      const reaction = prompt('Enter reaction emoji (e.g., ❤️)') || '❤️';
+      socket.emit('add_reaction', { messageId: msg.id, reaction });
+    });
+
+    div.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      replyToId = msg.id;
+      messageInput.placeholder = `Replying to: ${msg.content.substring(0,20)}...`;
+    });
+
+    messagesContainer.appendChild(div);
+  }
+
+  function renderAllMessages() {
+    messagesContainer.innerHTML = '';
+    messagesData.forEach(m => renderMessage(m));
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.style.display = 'none';
+    typingDiv.textContent = 'typing...';
+    messagesContainer.appendChild(typingDiv);
+  }
+
+  function updateMessageStatus(id) {
+    const msg = messagesData.find(m => m.id === id);
+    if (!msg) return;
+    const el = messagesContainer.querySelector(`.message[data-id="${id}"] .status`);
+    if (el) {
+      el.textContent = msg.read ? '✓✓ Read' : msg.delivered ? '✓✓ Delivered' : '✓ Sent';
+    }
+  }
+
+  function scrollToBottom() {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  // ---------- Emoji ----------
+  emojiBtn.addEventListener('click', () => {
+    emojiPicker.style.display = emojiPicker.style.display === 'flex' ? 'none' : 'flex';
+  });
+  emojiPicker.querySelectorAll('span').forEach(el => {
+    el.addEventListener('click', () => {
+      messageInput.value += el.textContent;
+      messageInput.focus();
+      emojiPicker.style.display = 'none';
+    });
+  });
+
+  // ---------- File ----------
+  fileBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result;
+      messageInput.value = `📎 ${file.name} (${(file.size/1024).toFixed(1)} KB)\n${base64}`;
+      sendMessage();
+      fileInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---------- Voice ----------
+  voiceBtn.addEventListener('click', async () => {
+    if (isRecording) {
+      mediaRecorder.stop();
+      voiceBtn.classList.remove('recording');
+      isRecording = false;
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const base64 = ev.target.result;
+          messageInput.value = `🎤 Voice note (${(audioBlob.size/1024).toFixed(1)} KB)\n${base64}`;
+          sendMessage();
+        };
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      voiceBtn.classList.add('recording');
+    } catch (err) {
+      alert('Microphone access denied');
+    }
+  });
+
+  // ---------- Search ----------
+  searchToggle.addEventListener('click', () => {
+    searchBar.style.display = searchBar.style.display === 'none' ? 'block' : 'none';
+    if (searchBar.style.display === 'block') searchInput.focus();
+  });
+  searchInput.addEventListener('input', async () => {
+    const q = searchInput.value.trim();
+    if (!q) { renderAllMessages(); return; }
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, query: q })
+    });
+    const results = await res.json();
+    const ids = results.map(r => r.id);
+    const filtered = messagesData.filter(m => ids.includes(m.id));
+    messagesContainer.innerHTML = '';
+    filtered.forEach(m => renderMessage(m));
+    if (filtered.length === 0) {
+      const div = document.createElement('div');
+      div.textContent = 'No messages found';
+      div.style.color = '#9ca3af';
+      div.style.padding = '20px';
+      messagesContainer.appendChild(div);
+    }
+  });
+
+  // ---------- Read receipts on scroll ----------
+  messagesContainer.addEventListener('scroll', () => {
+    const msgs = messagesContainer.querySelectorAll('.message.other');
+    let lastVisible = null;
+    const rect = messagesContainer.getBoundingClientRect();
+    for (const el of msgs) {
+      const elRect = el.getBoundingClientRect();
+      if (elRect.top >= rect.top && elRect.bottom <= rect.bottom) {
+        lastVisible = el;
+      }
+    }
+    if (lastVisible) {
+      const id = parseInt(lastVisible.dataset.id);
+      if (!readMarked.has(id)) {
+        readMarked.add(id);
+        socket.emit('mark_read', { messageId: id });
+        const msg = messagesData.find(m => m.id === id);
+        if (msg) { msg.read = true; updateMessageStatus(id); }
+      }
+    }
+  });
+
+  // ---------- PWA & Push ----------
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(() => console.log('SW registered'));
+  }
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  console.log('Arpita Chats loaded.');
+</script>
+</body>
+</html>
